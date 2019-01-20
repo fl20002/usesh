@@ -1,0 +1,165 @@
+1:install PVE 
+nano /etc/hosts
+hostname --ip-address
+echo "deb http://download.proxmox.com/debian/pve stretch pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
+wget http://download.proxmox.com/debian/proxmox-ve-release-5.x.gpg -O /etc/apt/trusted.gpg.d/proxmox-ve-release-5.x.gpg
+apt update && apt dist-upgrade -y
+apt install proxmox-ve postfix open-iscsi -y
+
+2:OP ONLINE ipv6
+nano /etc/apt/sources.list
+#DHCP6 Client
+deb http://httpredir.debian.org/debian experimental main
+apt-get update
+apt-get install odhcp6c
+nano /etc/modprobe.d/local.conf
+options ipv6 disable=0
+nano /etc/modules
+ipv6
+nano /etc/sysctl.conf
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+net.ipv4.conf.all.rp_filter=1
+net.ipv4.icmp_echo_ignore_broadcasts=1
+net.ipv4.conf.default.forwarding=1
+net.ipv4.conf.default.proxy_arp = 0
+net.ipv4.ip_forward=1
+kernel.sysrq = 1
+net.ipv4.conf.default.send_redirects = 1
+net.ipv4.conf.all.send_redirects = 0
+net.ipv6.conf.eno1.autoconf=0
+net.ipv6.conf.eno1.accept_ra=2
+net.ipv6.conf.default.forwarding=1
+net.ipv6.conf.all.forwarding=1
+net.ipv6.conf.default.proxy_ndp=1
+net.ipv6.conf.all.proxy_ndp=1
+
+3.rc.local
+nano /etc/rc.local
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+exit 0
+chmod +x /etc/rc.local
+systemctl start rc-local
+
+4.samba
+apt-get update
+apt-get install samba
+nano /etc/samba/smb.conf
+[data]
+comment = data
+path = /data
+writable = yes
+create mask = 0777
+browseable = yes
+guest ok =yes
+smbpasswd -a root
+/etc/init.d/samba reload
+/etc/init.d/samba restart
+
+5.lvm
+export http_proxy=http://ip:port
+101210-450789-147200 
+PV（物理卷）：
+pvcreate:创建pv
+pvs:查看pv信息
+pvdisplay:查看pv详细信息
+pvremove:移除pv
+pvmove：元数据的移动
+pvscan：扫描系统上的pv
+VG（卷组）：
+vgcreate，vgs，vgdisplay，vgremove，vgscan同上
+vgreduce：缩减vg
+vgextend：扩展vg
+LV（逻辑卷）：
+lvcreate，lvs，lvdisplay，lvremove，lvscan同上
+lvreduce：缩减lg
+lvextend：扩展lg
+lvcreate -L 100G -n data pve
+lvconvert --type thin-pool pve/data
+lvextend -L +5G -n pve/data
+
+6.pipework
+apt-get install iputils-arping git -y
+git clone https://github.com/jpetazzo/pipework
+cp pipework/pipework /usr/local/bin/
+
+7.docker
+apt install apt-transport-https ca-certificates curl gnupg2 software-properties-common
+curl -fsSL https://download.docker.com/linux/debian/gpg |  apt-key add -
+add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
+apt update
+apt install docker-ce
+systemctl status docker
+docker volume create portainer_data
+docker run -d -p 9000:9000 --name portainer --restart always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer
+
+8.firefox
+FROM danielguerra/ubuntu-xrdp
+RUN apt-get update && apt-get install -y \
+ttf-wqy-microhei \
+language-pack-zh-hant \
+language-pack-zh-hans \
+fcitx \
+fcitx-googlepinyin \
+
+9.app
+FROM debian
+RUN apt-get update && apt-get install -y \
+shadowsocks-libev \
+transmission-daemon 
+COPY run.sh /root/run.sh
+CMD [ "bash", "/root/run.sh" ]
+#!/bin/bash
+/etc/init.d/transmission-daemon start
+ss-server -c /etc/shadowsocks-libev/config.json
+
+10.hz
+auto lo
+iface lo inet loopback
+iface lo inet6 loopback
+auto enp2s0
+iface enp2s0 inet static
+        address  144.76.138.66
+        netmask  255.255.255.224
+        gateway  144.76.138.65
+        #up route add -net 144.76.138.64 netmask 255.255.255.224 gw 144.76.138.65 dev enp2s0
+        # route 144.76.138.64/27 via 144.76.138.65
+iface enp2s0 inet6 static
+        address  2a01:4f8:200:1241::1
+        netmask  64
+        gateway  fe80::1
+auto vmbr0
+iface vmbr0 inet static
+        address  10.10.10.1
+        netmask  255.255.255.0
+        bridge-ports none
+        bridge-stp off
+        bridge-fd 0
+iface vmbr0 inet6 static
+        address  2a01:4f8:200:1241::1
+        netmask  64
+post-up   iptables -t nat -A POSTROUTING -s '10.10.10.0/24' -o enp2s0 -j MASQUERADE
+post-down iptables -t nat -D POSTROUTING -s '10.10.10.0/24' -o enp2s0 -j MASQUERADE
+nano /etc/rc.local
+# brook
+nohup /root/brook relay -l :58888 -r 10.10.10.110:58888 > /dev/null 2>&1 &
+nohup /root/brook relay -l :3389 -r 10.10.10.210:3389 > /dev/null 2>&1 &
+# IPv6
+ip -f inet6 neigh add proxy 2a01:4f8:200:1241::110 dev enp2s0
+ip -f inet6 route add 2a01:4f8:200:1241::110 dev vmbr0
+ip -f inet6 neigh add proxy 2a01:4f8:200:1241::210 dev enp2s0
+ip -f inet6 route add 2a01:4f8:200:1241::210 dev vmbr0
+ip -f inet6 neigh add proxy 2a01:4f8:200:1241::10 dev enp2s0
+ip -f inet6 route add 2a01:4f8:200:1241::10 dev vmbr0
