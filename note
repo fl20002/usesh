@@ -116,8 +116,11 @@ fcitx-googlepinyin \
 
 9.app
 FROM debian
-RUN apt-get update && apt-get install -y \
-shadowsocks-libev \
+RUN printf "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/stretch-backports.list \
+	&& apt update \
+	&& apt -t stretch-backports install -y shadowsocks-libev \
+        && transmission-daemon
+	&& rm -rf /var/lib/apt/lists/*
 transmission-daemon 
 COPY run.sh /root/run.sh
 CMD [ "bash", "/root/run.sh" ]
