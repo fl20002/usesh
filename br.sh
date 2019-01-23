@@ -11,7 +11,7 @@ case $do in
 2) stty erase '^H' && read -p "container name:" name
    stty erase '^H' && read -p "num:" num
    pipework vmbr5 $name 10.10.20.$num/24@10.10.20.1
-
+;;
 3) stty erase '^H' && read -p "container name:" name
    stty erase '^H' && read -p "num:" num
    pipework vmbr6 $name 10.10.30.$num/24@10.10.30.1
