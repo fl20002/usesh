@@ -10,8 +10,8 @@ python setup.py build
 python setup.py install --install-layout=deb
 python setup.py clean -a
 
-wget -O  /etc/systemd/system/deluged.service https://raw.githubusercontent.com/fl20002/usesh/master/deluge/deluged.service
-wget -O  /etc/systemd/system/deluge-web.service https://raw.githubusercontent.com/fl20002/usesh/master/deluge/deluge-web.service
+wget -O  /etc/systemd/system/deluged.service https://raw.githubusercontent.com/fl20002/usesh/master/deluged.service
+wget -O  /etc/systemd/system/deluge-web.service https://raw.githubusercontent.com/fl20002/usesh/master/deluge-web.service
 
 systemctl enable deluged
 systemctl enable deluge-web
