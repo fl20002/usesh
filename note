@@ -165,3 +165,18 @@ ip -f inet6 neigh add proxy 2a01:4f8:200:1241::210 dev enp2s0
 ip -f inet6 route add 2a01:4f8:200:1241::210 dev vmbr0
 ip -f inet6 neigh add proxy 2a01:4f8:200:1241::10 dev enp2s0
 ip -f inet6 route add 2a01:4f8:200:1241::10 dev vmbr0
+
+11.cosfs
+apt-get install automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config fuse
+git clone https://github.com/tencentyun/cosfs /usr/cosfs
+cd /usr/cosfs
+./autogen.sh
+./configure
+make
+make install
+cosfs --version  
+nano /etc/passwd-cosfs
+cos-name:ID:KEY
+chmod 640 /etc/passwd-cosfs
+nano /etc/fstab
+cosfs#cos-name:/file /mount fuse _netdev,allow_other,url=http://cos.ap-shanghai.myqcloud.com,dbglevel=info,enable_noobj_cache,noxattr,max_stat_cache_size=50000,use_cache=/cos-tmp
