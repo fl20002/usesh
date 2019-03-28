@@ -167,7 +167,7 @@ ip -f inet6 neigh add proxy 2a01:4f8:200:1241::10 dev enp2s0
 ip -f inet6 route add 2a01:4f8:200:1241::10 dev vmbr0
 
 11.cosfs
-apt-get install automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config fuse
+apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config fuse
 git clone https://github.com/tencentyun/cosfs /usr/cosfs
 cd /usr/cosfs
 ./autogen.sh
