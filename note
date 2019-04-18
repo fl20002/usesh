@@ -96,11 +96,11 @@ git clone https://github.com/jpetazzo/pipework
 cp pipework/pipework /usr/local/bin/
 
 7.docker
-apt install apt-transport-https ca-certificates curl gnupg2 software-properties-common
+apt-get install apt-transport-https ca-certificates curl gnupg2 software-properties-common
 curl -fsSL https://download.docker.com/linux/debian/gpg |  apt-key add -
 add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable"
-apt update
-apt install docker-ce
+apt-get update
+apt-get install docker-ce
 systemctl status docker
 docker volume create portainer_data
 docker run -d -p 9000:9000 --name portainer --restart always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer
