@@ -115,17 +115,58 @@ fcitx \
 fcitx-googlepinyin \
 
 9.app
-FROM debian
-RUN printf "deb http://deb.debian.org/debian stretch-backports main" > /etc/apt/sources.list.d/stretch-backports.list \
-	&& apt-get update \
-	&& apt -t stretch-backports install -y shadowsocks-libev \
-        && apt-get install -y transmission-daemon
-	&& rm -rf /var/lib/apt/lists/*
-COPY run.sh /root/run.sh
-CMD [ "bash", "/root/run.sh" ]
+FROM alpine:3.8 as app
+RUN apk add curl bash unzip wget \
+    && curl https://getcaddy.com | bash -s personal http.webdav \
+    && curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip \
+    && unzip rclone-current-linux-amd64.zip \
+    && cd rclone-*-linux-amd64 \
+    && cp rclone /usr/bin/ \
+    && chown root:root /usr/bin/rclone \
+    && chmod 755 /usr/bin/rclone \
+    && ver=$(wget -qO- "https://github.com/txthinking/brook/tags"| grep "/txthinking/brook/releases/tag/"| head -n 1| awk -F "/tag/" '{print $2}'| sed 's/\">//') && echo ${brook_ver} \
+    && wget -O /usr/bin/brook https://github.com/txthinking/brook/releases/download/$ver/brook \
+    && chmod +x /usr/bin/brook
+FROM alpine:3.8
+ENV SSL_VER 3.2.5
+ENV SSL_NAME shadowsocks-libev-${SSL_VER}
+ENV SSL_RELEASE https://github.com/shadowsocks/shadowsocks-libev/releases/download/v${SSL_VER}/${SSL_NAME}.tar.gz
+RUN apk add --no-cache --virtual .build-deps \
+      autoconf \
+      automake \
+      build-base \
+      c-ares-dev \
+      libev-dev \
+      libtool \
+      libsodium-dev \
+      linux-headers \
+      mbedtls-dev \
+      pcre-dev \
+      wget \
+        && mkdir -p /tmp/libev \
+        && cd /tmp/libev \
+        && wget -qO ${SSL_NAME}.tar.gz ${SSL_RELEASE} \
+        && tar zxf ${SSL_NAME}.tar.gz \
+        && cd ${SSL_NAME} \
+        && ./configure --prefix=/usr --disable-documentation \
+        && make install \
+        && apk add --no-cache rng-tools \
+                $(scanelf --needed --nobanner /usr/bin/ss-* \
+                | awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+                | xargs -r apk info --installed \
+                | sort -u) \
+        && apk del .build-deps \
+        && cd / \
+        && rm -rf /tmp/libev
+RUN apk --update --no-cache add fuse bash curl wget transmission-daemon nano
+COPY --from=app /usr/bin/rclone /usr/bin/rclone
+COPY --from=app /usr/local/bin/caddy /usr/local/bin/caddy
+COPY --from=app /usr/bin/brook /usr/bin/brook
+CMD ["./app/run.sh"]
 #!/bin/bash
-/etc/init.d/transmission-daemon start
-ss-server -c /etc/shadowsocks-libev/config.json
+transmission-daemon --config-dir /tr
+ss-server -c /app/config.json &
+caddy -conf /app/Caddyfile
 
 10.hz
 auto lo
